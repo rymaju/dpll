@@ -53,7 +53,7 @@ satisfiable:
 ; satisfiable? : BooleanFormula -> Boolean
 ; sat solves stuff
 (define (satisfiable? bf)
-  (satisfiable-helper? bf (find-free-vars bf)))
+  (satisfiable-helper? bf (find-variables bf)))
 
 (check-expect (satisfiable?  ex-bf-4) #t)
 (check-expect (satisfiable? (make-and-op 'x 'x)) #t)
@@ -61,20 +61,20 @@ satisfiable:
 (check-expect (satisfiable? (make-and-op 'x (make-not-op 'x))) #f)
 
 
-;; find-free-vars : BooleanFormula -> [List-of Symbol]
+;; find-variables : BooleanFormula -> [List-of Symbol]
 ;; computes a list of all the variables that exist within the boolean formula
-(define (find-free-vars bf)
+(define (find-variables bf)
   (cond
     [(boolean? bf) '()]
     [(symbol? bf) (list bf)]
-    [(and-op? bf) (append (find-free-vars (and-op-left bf)) (find-free-vars (and-op-right bf)))]
-    [(or-op? bf) (append (find-free-vars (or-op-left bf)) (find-free-vars (or-op-right bf)))]
-    [(not-op? bf) (find-free-vars (not-op-val bf))]))
+    [(and-op? bf) (append (find-variables (and-op-left bf)) (find-variables (and-op-right bf)))]
+    [(or-op? bf) (append (find-variables (or-op-left bf)) (find-variables (or-op-right bf)))]
+    [(not-op? bf) (find-variables (not-op-val bf))]))
 
-(check-expect (find-free-vars  ex-bf-1) (list 'x))
-(check-expect (find-free-vars  ex-bf-2) (list 'x))
-(check-expect (find-free-vars  ex-bf-3) (list 'x 'y))
-(check-expect (find-free-vars  ex-bf-4) (list 'x 'y))
+(check-expect (find-variables  ex-bf-1) (list 'x))
+(check-expect (find-variables  ex-bf-2) (list 'x))
+(check-expect (find-variables  ex-bf-3) (list 'x 'y))
+(check-expect (find-variables  ex-bf-4) (list 'x 'y))
 
 ;; satisfiable-helper? : BooleanFormula [List-of Symbol] -> Boolean
 ;; computes a list of all the variables that exist within the boolean formula
@@ -83,6 +83,7 @@ satisfiable:
   (cond
     [(consistent-literals? bf) #t]
     [(empty? free-vars) #f]
+    
     [else (or (satisfiable-helper? (substitute (first free-vars) #t bf) (rest free-vars))
               (satisfiable-helper? (substitute (first free-vars) #f bf) (rest free-vars)))]))
 
