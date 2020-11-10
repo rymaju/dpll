@@ -1,6 +1,3 @@
-;; The first three lines of this file were inserted by DrRacket. They record metadata
-;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname dpll) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
 (define-struct and-op [left right])
 (define-struct or-op [left right])
 (define-struct not-op [val])
@@ -53,7 +50,7 @@ satisfiable:
 ; satisfiable? : BooleanFormula -> Boolean
 ; sat solves stuff
 (define (satisfiable? bf)
-  (satisfiable-helper? bf (find-variables bf)))
+  (satisfiable-helper? bf (fv-unique (find-vars bf))))
 
 (check-expect (satisfiable?  ex-bf-4) #t)
 (check-expect (satisfiable? (make-and-op 'x 'x)) #t)
@@ -61,20 +58,38 @@ satisfiable:
 (check-expect (satisfiable? (make-and-op 'x (make-not-op 'x))) #f)
 
 
-;; find-variables : BooleanFormula -> [List-of Symbol]
+;; find-vars : BooleanFormula -> [List-of Symbol]
 ;; computes a list of all the variables that exist within the boolean formula
-(define (find-variables bf)
+(define (find-vars bf)
   (cond
     [(boolean? bf) '()]
     [(symbol? bf) (list bf)]
-    [(and-op? bf) (append (find-variables (and-op-left bf)) (find-variables (and-op-right bf)))]
-    [(or-op? bf) (append (find-variables (or-op-left bf)) (find-variables (or-op-right bf)))]
-    [(not-op? bf) (find-variables (not-op-val bf))]))
+    [(and-op? bf) (append (find-vars (and-op-left bf)) (find-vars (and-op-right bf)))]
+    [(or-op? bf) (append (find-vars (or-op-left bf)) (find-vars (or-op-right bf)))]
+    [(not-op? bf) (find-vars (not-op-val bf))]))
 
-(check-expect (find-variables  ex-bf-1) (list 'x))
-(check-expect (find-variables  ex-bf-2) (list 'x))
-(check-expect (find-variables  ex-bf-3) (list 'x 'y))
-(check-expect (find-variables  ex-bf-4) (list 'x 'y))
+(check-expect (find-vars  ex-bf-1) (list 'x))
+(check-expect (find-vars  ex-bf-2) (list 'x))
+(check-expect (find-vars  ex-bf-3) (list 'x 'y))
+(check-expect (find-vars  ex-bf-4) (list 'x 'y))
+(check-expect (find-vars  (make-and-op  'x (make-or-op 'x 'y))) (list 'x 'x 'y))
+
+;; fv-unique: [List-of Symbol] -> [List-of Symbol]
+;; Returns unique occurrences of symbols in a list of them
+(define (fv-unique los)
+  (cond
+    [(empty? los) los]
+    [else        (if (member? (first los) (rest los))
+                     (fv-unique (rest los))
+                     (cons (first los) (fv-unique (rest los))))]))
+
+
+(check-expect (fv-unique (list 'x 'y 'y 'x)) (list 'y 'x))
+(check-expect (fv-unique (list 'x 'y 'x 'y)) (list 'x 'y))
+(check-expect (fv-unique (list 'x 'y)) (list 'x 'y))
+(check-expect (fv-unique empty) empty)
+
+
 
 ;; satisfiable-helper? : BooleanFormula [List-of Symbol] -> Boolean
 ;; computes a list of all the variables that exist within the boolean formula
@@ -83,7 +98,6 @@ satisfiable:
   (cond
     [(consistent-literals? bf) #t]
     [(empty? free-vars) #f]
-    
     [else (or (satisfiable-helper? (substitute (first free-vars) #t bf) (rest free-vars))
               (satisfiable-helper? (substitute (first free-vars) #f bf) (rest free-vars)))]))
 
@@ -93,7 +107,9 @@ satisfiable:
 (check-expect (satisfiable-helper?  ex-bf-3 (list 'x 'y)) #t)
 (check-expect (satisfiable-helper?  ex-bf-4 (list 'x)) #f)
 (check-expect (satisfiable-helper?  ex-bf-4 (list 'x 'y)) #t)
-
+(check-expect (satisfiable-helper? (make-and-op #t #f) empty) #f)
+(check-expect (satisfiable-helper? (make-and-op 'x 'z) (list 'x 'z))  #t)
+(check-expect (satisfiable-helper? (make-and-op (make-not-op #t) 'z) (list 'z)) #f)
 
 ;; consistent-literals? : BooleanFormula -> Boolean
 ;; does the boolean formula contain no variables and evaluates to true?
